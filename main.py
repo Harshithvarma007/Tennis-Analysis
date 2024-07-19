@@ -11,13 +11,15 @@ from mini_court import MiniCourt
 import cv2
 import pandas as pd
 from copy import deepcopy
+from logs import logger
+import moviepy.editor as mp
 
-
-def main():
+def main(video_path="input_videos\input_video.mp4",name1="Harshith",name2="Sai"):
     # Read Video
-    input_video_path = "input_videos/input_video.mp4"
+    input_video_path = video_path
+    logger.info(f"Reading video from {input_video_path}")
     video_frames = read_video(input_video_path)
-
+    
     # Detect Players and Ball
     player_tracker = PlayerTracker(model_path='models\yolov10l.pt')
     ball_tracker = BallTracker(model_path='models\yolov5_last.pt')
@@ -31,8 +33,8 @@ def main():
                                                      stub_path="tracker_stubs/ball_detections.pkl"
                                                      )
     ball_detections = ball_tracker.interpolate_ball_positions(ball_detections)
-    
-    
+    logger.info("Players and Ball Detected")
+    logger.info("Detecting Court")
     # Court Line Detector model
     court_model_path = "models/keypoints_model.pth"
     court_line_detector = CourtLineDetector(court_model_path)
@@ -40,13 +42,14 @@ def main():
 
     # choose players
     player_detections = player_tracker.choose_and_filter_players(court_keypoints, player_detections)
-
+    logger.info("Players Selected")
     # MiniCourt
     mini_court = MiniCourt(video_frames[0]) 
-
+    logger.info("mini_court")
     # Detect ball shots
     ball_shot_frames= ball_tracker.get_ball_shot_frames(ball_detections)
 
+    logger.info("ball shots detected")
     # Convert positions to mini court positions
     player_mini_court_detections, ball_mini_court_detections = mini_court.convert_bounding_boxes_to_mini_court_coordinates(player_detections, 
                                                                                                           ball_detections,
@@ -124,7 +127,7 @@ def main():
 
     # Draw output
     ## Draw Player Bounding Boxes
-    output_video_frames= player_tracker.draw_bboxes(video_frames, player_detections)
+    output_video_frames= player_tracker.draw_bboxes(video_frames, player_detections,name1,name2)
     output_video_frames= ball_tracker.draw_bboxes(output_video_frames, ball_detections)
 
     ## Draw court Keypoints
@@ -136,13 +139,21 @@ def main():
     output_video_frames = mini_court.draw_points_on_mini_court(output_video_frames,ball_mini_court_detections, color=(0,255,255))    
 
     # Draw Player Stats
-    output_video_frames = draw_player_stats(output_video_frames,player_stats_data_df)
+    output_video_frames = draw_player_stats(output_video_frames,player_stats_data_df,name1,name2)
 
     ## Draw frame number on top left corner
     for i, frame in enumerate(output_video_frames):
         cv2.putText(frame, f"Frame: {i}",(10,30),cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
-    save_video(output_video_frames, "output_videos/output_video.avi")
+    save_video(output_video_frames, "output_videos/output_video.mp4")
+    # def convert_avi_to_mp4(input_path, output_path):
+    #     try:
+    #         clip = mp.VideoFileClip(input_path)
+    #         clip.write_videofile(output_path)
+    #     except Exception as e:
+    #         print(f"Error converting {input_path} to {output_path}: {e}")
+            
+    # convert_avi_to_mp4("output_videos/output_video.avi", "output_videos/output_video.mp4")
 
 if __name__ == "__main__":
     main()
