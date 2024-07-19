@@ -1,6 +1,6 @@
 from ultralytics import YOLO
 
-model=YOLO('Models\yolov10s.pt')
+model=YOLO('Models\keypoints_model.pth')
 
 result=model.track('input_videos\input_video.mp4',conf=0.2,save= True)
 
